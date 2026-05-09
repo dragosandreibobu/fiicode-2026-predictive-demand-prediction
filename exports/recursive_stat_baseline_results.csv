@@ -1,0 +1,8 @@
+experiment,validation_rmse,submission_path
+recursive_safe_lag_mean,3.114254033933046,C:\Users\Dragos\OneDrive\Competition Kaggle\SupplyChain\exports\recursive_safe_lag_mean\submission.csv
+recursive_safe_lag_mean_recent14_blend,3.119927844345092,C:\Users\Dragos\OneDrive\Competition Kaggle\SupplyChain\exports\recursive_safe_lag_mean_recent14_blend\submission.csv
+recursive_safe_lag_weighted_clipped_p995,3.120237581106258,C:\Users\Dragos\OneDrive\Competition Kaggle\SupplyChain\exports\recursive_safe_lag_weighted_clipped_p995\submission.csv
+recursive_safe_lag_weighted,3.120237581106258,C:\Users\Dragos\OneDrive\Competition Kaggle\SupplyChain\exports\recursive_safe_lag_weighted\submission.csv
+recursive_safe_lag_weighted_recent14_blend,3.1277629972098024,C:\Users\Dragos\OneDrive\Competition Kaggle\SupplyChain\exports\recursive_safe_lag_weighted_recent14_blend\submission.csv
+recursive_lag7_recent14_blend,3.1632875483432477,C:\Users\Dragos\OneDrive\Competition Kaggle\SupplyChain\exports\recursive_lag7_recent14_blend\submission.csv
+recursive_lag7,3.166095570599371,C:\Users\Dragos\OneDrive\Competition Kaggle\SupplyChain\exports\recursive_lag7\submission.csv

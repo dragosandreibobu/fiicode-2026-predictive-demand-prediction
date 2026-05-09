@@ -1,0 +1,37 @@
+Overview
+Context:
+In the modern retail landscape, efficiency isn't just about profit—it's about sustainability. Every year, tons of fresh produce are wasted due to inaccurate demand forecasting. If a store overstocks, products expire on the shelf; if it understocks, it loses customers and revenue.
+
+In this 5-hour intensive AI challenge, your mission is to build a high-precision Machine Learning model to predict the next two weeks daily demand for a national retail network.
+
+The Challenge:
+Participants will navigate a complex dataset that mirrors real-world market dynamics. To win, your model must decode how different contextual factors interact:
+
+Temporal Context: what is the product sell through rate in the last period of time? how holidays influence the demand?
+
+Spatial Context: How do store coordinates and local competition influence sales patterns?
+
+Competitive Price Elasticity: How does demand shift when your price changes relative to nearby competitors?
+
+New products: Special handling of recently-launched products with limited history.
+
+Start
+
+2 hours ago
+Close
+
+4 hours to go
+Evaluation
+Submissions are evaluated using RMSE (Root Mean Squared Error):
+
+
+This metric penalizes large outliers, challenging you to create a model that is robust across all product categories.
+
+Submission File
+For each row_ID —which represents a unique combination of item_id, store_id, and date— you must predict the value for the demand variable. The submission file must include a header and follow this format:
+
+row_id,demand
+0,3
+1,1
+2,5
+...

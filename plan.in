@@ -1,0 +1,492 @@
+from pathlib import Path
+
+plan = """FIICODE 2026 FINAL — SUPPLYCHAIN DEMAND FORECASTING PLAN
+==============================================================
+
+Competition task
+----------------
+Predict daily demand for each product-store-date row in the next 14 days.
+
+Evaluation metric
+-----------------
+RMSE — Root Mean Squared Error
+
+Current anchor
+--------------
+Submission 02
+Model: CatBoost base + historical means
+Public score: 2.1364
+
+Rule:
+Every new experiment must be compared against 2.1364.
+
+Submission convention:
+- Every notebook/script must write the Kaggle upload file as `submission.csv`.
+- Optional: also write a run-specific copy such as `submission_catboost_safe_lags.csv`.
+- Before upload, verify the file has exactly these columns:
+  `row_id`, `demand`
+
+
+==============================================================
+PHASE 0 — BASELINE ANCHOR
+==============================================================
+
+[01] Product-store average baseline
+Status: SUBMITTED
+Public score: 2.5280
+
+Method:
+- Predict average historical demand for each (store_id, product_id).
+- Fallbacks:
+  1. product-store mean
+  2. product mean
+  3. category mean
+  4. global mean
+
+Purpose:
+- Establish a safe leaderboard anchor.
+- Verify submission format.
+- Provide a comparison point for all future models.
+
+Output file:
+submission.csv
+
+
+==============================================================
+PHASE 1 — BASE CATBOOST
+==============================================================
+
+[02] CatBoost base + historical means
+Status: SUBMITTED — NEW ANCHOR / BEST ENTRY
+
+Public score:
+- 2.1364
+
+Competition note:
+- Your Best Entry
+- Improved over 2.5280
+
+Model:
+CatBoostRegressor
+
+Features:
+- store_id
+- city
+- region
+- product_id
+- product_name
+- category
+- price
+- loyalty_day
+- is_holiday
+- holiday_name
+- dayofweek
+- is_weekend
+- day
+- month
+- weekofyear
+- days_from_start
+- product_store_mean
+- product_mean
+- store_mean
+- category_mean
+- category_store_mean
+- product_weekday_mean
+- product_store_weekday_mean
+- product_avg_price
+- category_avg_price
+- price_vs_product_avg
+- price_vs_category_avg
+- price_diff_product_avg
+- price_diff_category_avg
+
+Validation:
+- Last 14 days of train.csv
+
+Purpose:
+- Test whether CatBoost can beat the simple mean baseline.
+- Add calendar, categorical, price, and historical context.
+- No lags yet.
+
+Output file:
+submission_catboost_base_means.csv
+
+Decision:
+Result:
+- Score improved from 2.5280 to 2.1364.
+- This is the new leaderboard anchor.
+- Move to lag features next.
+
+
+==============================================================
+PHASE 2 — STRONGER MEAN BASELINES
+==============================================================
+
+[03] Product-store-weekday average
+Status: TODO
+
+Method:
+- Predict average demand by (store_id, product_id, dayofweek).
+- Fallbacks:
+  1. product-store-weekday mean
+  2. product-store mean
+  3. product-weekday mean
+  4. product mean
+  5. category mean
+  6. global mean
+
+Purpose:
+- Check if weekday seasonality alone improves the baseline.
+- Very fast experiment.
+- Useful as blend component.
+
+Expected:
+May beat plain product-store mean if weekday patterns are strong.
+
+
+[04] Category-store-weekday average
+Status: OPTIONAL
+
+Method:
+- Predict average demand by (store_id, category, dayofweek).
+- Use as fallback or blend with product-store mean.
+
+Purpose:
+- Help with new products or sparse product-store pairs.
+
+
+==============================================================
+PHASE 3 — NON-RECURSIVE TIME FEATURES
+==============================================================
+
+[05] CatBoost + safe lag features
+Status: TODO
+
+Model:
+CatBoostRegressor
+
+Add features:
+- lag_7
+- lag_14
+- lag_21
+- lag_28
+
+Computed by:
+groupby(["store_id", "product_id"])["demand"].shift(lag)
+
+Purpose:
+- Use previous same-weekday demand.
+- This is the first serious time-aware model.
+
+Output file:
+submission.csv
+
+Important:
+- Do not use current-row demand.
+- Compute validation features only from past training rows.
+- Avoid leakage.
+
+Decision:
+IF validation improves and public score improves:
+    Use as new anchor.
+    Continue with rolling means.
+ELSE:
+    inspect missing lag percentage and feature importance.
+
+
+[06] CatBoost + lags + rolling means
+Status: TODO
+
+Add features:
+- lag_7
+- lag_14
+- lag_21
+- lag_28
+- roll_mean_7
+- roll_mean_14
+- roll_mean_28
+- roll_std_7
+- roll_std_14
+- roll_std_28
+
+Rolling rule:
+Use shift(1) before rolling.
+
+Correct:
+groupby(...).transform(lambda s: s.shift(1).rolling(window).mean())
+
+Incorrect:
+rolling without shift, because it leaks current demand.
+
+Purpose:
+- Capture recent average demand and volatility.
+- Should be stronger than simple lag model.
+
+Output file:
+submission.csv
+
+
+==============================================================
+PHASE 4 — RECURSIVE PREDICTION
+==============================================================
+
+[07] Recursive CatBoost with safe lags
+Status: TODO
+
+Idea:
+Predict future days one at a time.
+
+Algorithm:
+1. Start with full historical train data.
+2. For each test date in chronological order:
+   a. Build features for that date.
+   b. Predict demand.
+   c. Insert predicted demand back into the data.
+   d. Recompute future lag/rolling features.
+3. Continue until all 14 days are predicted.
+
+Safe first recursive lags:
+- lag_7
+- lag_14
+- lag_21
+- lag_28
+- roll_mean_7
+- roll_mean_14
+- roll_mean_28
+
+Avoid initially:
+- lag_1
+- lag_2
+- lag_3
+
+Reason:
+Short lags depend heavily on previous predictions and can amplify mistakes.
+
+Purpose:
+- Simulate the 14-day future horizon.
+- Make test-day 2 depend on predicted test-day 1, etc.
+
+Output file:
+submission.csv
+
+Risk:
+- Error propagation.
+
+
+[08] Recursive CatBoost with short lags
+Status: OPTIONAL / RISKY
+
+Add:
+- lag_1
+- lag_2
+- lag_3
+
+Purpose:
+- Try to capture very recent demand movement.
+
+Risk:
+- One bad early prediction can damage later predictions.
+
+
+==============================================================
+PHASE 5 — TARGET AND POST-PROCESSING EXPERIMENTS
+==============================================================
+
+[09] CatBoost with log1p target
+Status: OPTIONAL
+
+Target:
+log1p(demand)
+
+Prediction:
+expm1(prediction)
+
+Purpose:
+- Reduce impact of high-demand outliers.
+- May improve stability.
+
+Risk:
+- Can underpredict high-demand products.
+- RMSE is measured on original demand, not log demand.
+
+
+[10] Decimal predictions
+Status: DEFAULT
+
+Post-processing:
+- Clip predictions below 0.
+- Keep decimal values.
+
+Rule:
+prediction = max(prediction, 0)
+
+Purpose:
+- Usually better for RMSE.
+
+
+[11] Rounded predictions
+Status: OPTIONAL
+
+Post-processing:
+- Clip below 0.
+- Round to integer.
+
+Purpose:
+- Try only if decimals perform worse or if competition expects integer units.
+
+Rule:
+prediction = round(max(prediction, 0))
+
+
+[12] Conservative clipping
+Status: OPTIONAL
+
+Idea:
+Clip extreme predictions using training distribution.
+
+Possible clipping:
+- demand >= 0
+- demand <= 99.5th percentile of train demand
+
+Purpose:
+- Reduce RMSE damage from extreme outliers.
+
+Risk:
+- May hurt true high-demand products.
+
+
+==============================================================
+PHASE 6 — LIGHTGBM AND BLENDING
+==============================================================
+
+[13] LightGBM version
+Status: OPTIONAL
+
+Model:
+LightGBMRegressor
+
+Purpose:
+- Try a different tree model family.
+- Can complement CatBoost in blends.
+
+Need:
+- Encode categorical features properly.
+- Convert object columns to category.
+
+
+[14] CatBoost + LightGBM blend
+Status: OPTIONAL
+
+Blend examples:
+- 0.50 * CatBoost + 0.50 * LightGBM
+- 0.70 * CatBoost + 0.30 * LightGBM
+- weighted by validation RMSE
+
+Purpose:
+- Stabilize predictions.
+- Often improves public/private robustness.
+
+
+[15] CatBoost + baseline blend
+Status: OPTIONAL
+
+Blend:
+prediction = 0.80 * CatBoost + 0.20 * product_store_baseline
+
+Purpose:
+- Pull unstable model predictions toward safe historical averages.
+- Useful if CatBoost overfits.
+
+
+==============================================================
+SUBMISSION BUDGET
+==============================================================
+
+Total available submissions: 20
+
+Suggested use:
+01  Product-store average baseline                    DONE
+02  CatBoost base + historical means                  DONE
+03  Product-store-weekday average                     TODO
+04  CatBoost + lag_7/14/21/28                         NEXT
+05  CatBoost + lags + rolling means                   NEXT AFTER 04
+06  Recursive CatBoost safe lags                      TODO
+07  Recursive CatBoost with short lags                OPTIONAL
+08  CatBoost log1p target                             OPTIONAL
+09  Best CatBoost decimal                             TODO
+10  Best CatBoost rounded                             OPTIONAL
+11  LightGBM                                          OPTIONAL
+12  CatBoost + LightGBM blend                         OPTIONAL
+13  CatBoost + baseline blend                         OPTIONAL
+14  Conservative clipping                             OPTIONAL
+15  Tuned CatBoost depth/lr                           OPTIONAL
+16  Tuned CatBoost regularization                     OPTIONAL
+17  Best recursive rerun                              OPTIONAL
+18  Best validation model rerun                       TODO
+19  Final candidate A                                 TODO
+20  Emergency fallback: best known public score file  TODO
+
+
+==============================================================
+MODEL COMPARISON LOG
+==============================================================
+
+Fill this during the competition.
+
+| ID | Model                             | Validation RMSE | Public Score | Submit? | Notes |
+|----|-----------------------------------|-----------------|--------------|---------|-------|
+| 01 | product-store average             |                 | 2.5280       | yes     | old anchor |
+| 02 | catboost base means               |                 | 2.1364       | yes     | new anchor, best entry |
+| 03 | product-store-weekday average     |                 |              |         |       |
+| 04 | catboost safe lags                |                 |              |         |       |
+| 05 | catboost lags rolling             |                 |              |         |       |
+| 06 | recursive safe lags               |                 |              |         |       |
+| 07 | recursive short lags              |                 |              |         |       |
+| 08 | catboost log1p                    |                 |              |         |       |
+| 09 | lightgbm                          |                 |              |         |       |
+| 10 | blend                             |                 |              |         |       |
+
+
+==============================================================
+DECISION RULES
+==============================================================
+
+Rule 1:
+Never replace the current best model unless the public score improves.
+
+Rule 2:
+Use validation RMSE to guide experiments, but trust public score for final ranking.
+
+Rule 3:
+If a model is worse than the anchor, do not tune it blindly.
+Add a new signal:
+- weekday means
+- lags
+- rolling means
+- recursive prediction
+
+Rule 4:
+Submit early and often, but every submission must test one clear idea.
+
+Rule 5:
+Always keep the best public-score submission file safe.
+
+Rule 6:
+In the final 20-30 minutes, stop experimenting.
+Submit/re-submit the best known model and keep the emergency fallback ready.
+
+
+==============================================================
+CURRENT NEXT ACTION
+==============================================================
+
+1. Keep `submission_catboost_base_means.csv` safe as the current best public-score file.
+2. Run `fiicode_catboost_safe_lags.ipynb` with `USE_ROLLING_FEATURES = False`.
+3. Submit `submission_catboost_safe_lags.csv` as step 04.
+4. Re-run the same notebook with `USE_ROLLING_FEATURES = True`.
+5. Submit `submission_catboost_lags_rolling.csv` as step 05.
+"""
+
+path = Path("/mnt/data/plan.in")
+path.write_text(plan, encoding="utf-8")
+str(path)
